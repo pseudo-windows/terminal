@@ -358,3 +358,7 @@ additional questions or comments.
 [conduct-FAQ]: https://opensource.microsoft.com/codeofconduct/faq/
 [conduct-email]: mailto:opencode@microsoft.com
 [store-install-link]: https://aka.ms/terminal
+
+## What I want to do
+
+I want to make this compatible with Pseudo Windows, and figure out how to install this on Chrome OS, which will have to be done first.
