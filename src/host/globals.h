@@ -28,6 +28,7 @@ Revision History:
 #include "../renderer/inc/IFontDefaultList.hpp"
 
 #include "../server/DeviceComm.h"
+#include "../server/ConDrvDeviceComm.h"
 
 #include <TraceLoggingProvider.h>
 #include <winmeta.h>
@@ -45,7 +46,7 @@ public:
 
     CONSOLE_INFORMATION& getConsoleInformation();
 
-    DeviceComm* pDeviceComm;
+    IDeviceComm* pDeviceComm{ nullptr };
 
     wil::unique_event_nothrow hInputEvent;
 
@@ -68,6 +69,11 @@ public:
     bool IsHeadless() const;
 
     ApiRoutines api;
+
+    bool handoffTarget = false;
+
+    std::optional<CLSID> handoffConsoleClsid;
+    std::optional<CLSID> handoffTerminalClsid;
 
 #ifdef UNIT_TESTING
     void EnableConptyModeForTests(std::unique_ptr<Microsoft::Console::Render::VtEngine> vtRenderEngine);

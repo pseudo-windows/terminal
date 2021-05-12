@@ -28,9 +28,9 @@ namespace XamlAutomation
     using winrt::Windows::UI::Xaml::Automation::Provider::ITextRangeProvider;
 }
 
-namespace winrt::Microsoft::Terminal::TerminalControl::implementation
+namespace winrt::Microsoft::Terminal::Control::implementation
 {
-    TermControlAutomationPeer::TermControlAutomationPeer(winrt::Microsoft::Terminal::TerminalControl::implementation::TermControl* owner) :
+    TermControlAutomationPeer::TermControlAutomationPeer(winrt::Microsoft::Terminal::Control::implementation::TermControl* owner) :
         TermControlAutomationPeerT<TermControlAutomationPeer>(*owner), // pass owner to FrameworkElementAutomationPeer
         _termControl{ owner }
     {
@@ -199,7 +199,7 @@ namespace winrt::Microsoft::Terminal::TerminalControl::implementation
 #pragma region IControlAccessibilityInfo
     COORD TermControlAutomationPeer::GetFontSize() const
     {
-        return _termControl->GetActualFont().GetSize();
+        return _termControl->GetFontSize();
     }
 
     RECT TermControlAutomationPeer::GetBounds() const

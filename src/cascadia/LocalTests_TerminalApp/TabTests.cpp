@@ -85,6 +85,14 @@ namespace TerminalAppLocalTests
         TEST_METHOD(NextMRUTab);
         TEST_METHOD(VerifyCommandPaletteTabSwitcherOrder);
 
+        TEST_METHOD(TestWindowRenameSuccessful);
+        TEST_METHOD(TestWindowRenameFailure);
+
+        TEST_METHOD(TestControlSettingsHasParent);
+        TEST_METHOD(TestPreviewCommitScheme);
+        TEST_METHOD(TestPreviewDismissScheme);
+        TEST_METHOD(TestPreviewSchemeWhilePreviewing);
+
         TEST_CLASS_SETUP(ClassSetup)
         {
             return true;
@@ -260,6 +268,15 @@ namespace TerminalAppLocalTests
             page->Create();
             Log::Comment(L"Create()'d the page successfully");
 
+            // Build a NewTab action, to make sure we start with one. The real
+            // Terminal will always get one from AppCommandlineArgs.
+            NewTerminalArgs newTerminalArgs{};
+            NewTabArgs args{ newTerminalArgs };
+            ActionAndArgs newTabAction{ ShortcutAction::NewTab, args };
+            // push the arg onto the front
+            page->_startupActions.Append(newTabAction);
+            Log::Comment(L"Added a single newTab action");
+
             auto app = ::winrt::Windows::UI::Xaml::Application::Current();
 
             winrt::TerminalApp::TerminalPage pp = *page;
@@ -276,9 +293,10 @@ namespace TerminalAppLocalTests
             // In the real app, this isn't a problem, but doesn't happen
             // reliably in the unit tests.
             Log::Comment(L"Ensure we set the first tab as the selected one.");
-            auto tab = page->_GetTerminalTabImpl(page->_tabs.GetAt(0));
-            page->_tabView.SelectedItem(tab->TabViewItem());
-            page->_UpdatedSelectedTab(0);
+            auto tab = page->_tabs.GetAt(0);
+            auto tabImpl = page->_GetTerminalTabImpl(tab);
+            page->_tabView.SelectedItem(tabImpl->TabViewItem());
+            page->_UpdatedSelectedTab(tab);
         });
         VERIFY_SUCCEEDED(result);
     }
@@ -330,7 +348,7 @@ namespace TerminalAppLocalTests
     {
         // * Create a tab with a profile with GUID 1
         // * Reload the settings so that GUID 1 is no longer in the list of profiles
-        // * Try calling _DuplicateTabViewItem on tab 1
+        // * Try calling _DuplicateFocusedTab on tab 1
         // * No new tab should be created (and more importantly, the app should not crash)
         //
         // Created to test GH#2455
@@ -392,7 +410,7 @@ namespace TerminalAppLocalTests
 
         Log::Comment(L"Duplicate the first tab");
         result = RunOnUIThread([&page]() {
-            page->_DuplicateTabViewItem();
+            page->_DuplicateFocusedTab();
             VERIFY_ARE_EQUAL(2u, page->_tabs.Size());
         });
         VERIFY_SUCCEEDED(result);
@@ -407,7 +425,7 @@ namespace TerminalAppLocalTests
 
         Log::Comment(L"Duplicate the tab, and don't crash");
         result = RunOnUIThread([&page]() {
-            page->_DuplicateTabViewItem();
+            page->_DuplicateFocusedTab();
             VERIFY_ARE_EQUAL(2u, page->_tabs.Size(), L"We should gracefully do nothing here - the profile no longer exists.");
         });
         VERIFY_SUCCEEDED(result);
@@ -486,7 +504,7 @@ namespace TerminalAppLocalTests
 
         Log::Comment(NoThrowString().Format(L"Duplicate the first pane"));
         result = RunOnUIThread([&page]() {
-            page->_SplitPane(SplitState::Automatic, SplitType::Duplicate, nullptr);
+            page->_SplitPane(SplitState::Automatic, SplitType::Duplicate, 0.5f, nullptr);
 
             VERIFY_ARE_EQUAL(1u, page->_tabs.Size());
             auto tab = page->_GetTerminalTabImpl(page->_tabs.GetAt(0));
@@ -504,7 +522,7 @@ namespace TerminalAppLocalTests
 
         Log::Comment(NoThrowString().Format(L"Duplicate the pane, and don't crash"));
         result = RunOnUIThread([&page]() {
-            page->_SplitPane(SplitState::Automatic, SplitType::Duplicate, nullptr);
+            page->_SplitPane(SplitState::Automatic, SplitType::Duplicate, 0.5f, nullptr);
 
             VERIFY_ARE_EQUAL(1u, page->_tabs.Size());
             auto tab = page->_GetTerminalTabImpl(page->_tabs.GetAt(0));
@@ -565,6 +583,75 @@ namespace TerminalAppLocalTests
                     "tabTitle" : "Profile 3",
                     "historySize": 4
                 }
+            ],
+            "schemes":
+            [
+                {
+                    "name": "Campbell",
+                    "foreground": "#CCCCCC",
+                    "background": "#0C0C0C",
+                    "cursorColor": "#FFFFFF",
+                    "black": "#0C0C0C",
+                    "red": "#C50F1F",
+                    "green": "#13A10E",
+                    "yellow": "#C19C00",
+                    "blue": "#0037DA",
+                    "purple": "#881798",
+                    "cyan": "#3A96DD",
+                    "white": "#CCCCCC",
+                    "brightBlack": "#767676",
+                    "brightRed": "#E74856",
+                    "brightGreen": "#16C60C",
+                    "brightYellow": "#F9F1A5",
+                    "brightBlue": "#3B78FF",
+                    "brightPurple": "#B4009E",
+                    "brightCyan": "#61D6D6",
+                    "brightWhite": "#F2F2F2"
+                },
+                {
+                    "name": "Vintage",
+                    "foreground": "#C0C0C0",
+                    "background": "#000000",
+                    "cursorColor": "#FFFFFF",
+                    "black": "#000000",
+                    "red": "#800000",
+                    "green": "#008000",
+                    "yellow": "#808000",
+                    "blue": "#000080",
+                    "purple": "#800080",
+                    "cyan": "#008080",
+                    "white": "#C0C0C0",
+                    "brightBlack": "#808080",
+                    "brightRed": "#FF0000",
+                    "brightGreen": "#00FF00",
+                    "brightYellow": "#FFFF00",
+                    "brightBlue": "#0000FF",
+                    "brightPurple": "#FF00FF",
+                    "brightCyan": "#00FFFF",
+                    "brightWhite": "#FFFFFF"
+                },
+                {
+                    "name": "One Half Light",
+                    "foreground": "#383A42",
+                    "background": "#FAFAFA",
+                    "cursorColor": "#4F525D",
+                    "black": "#383A42",
+                    "red": "#E45649",
+                    "green": "#50A14F",
+                    "yellow": "#C18301",
+                    "blue": "#0184BC",
+                    "purple": "#A626A4",
+                    "cyan": "#0997B3",
+                    "white": "#FAFAFA",
+                    "brightBlack": "#4F525D",
+                    "brightRed": "#DF6C75",
+                    "brightGreen": "#98C379",
+                    "brightYellow": "#E4C07A",
+                    "brightBlue": "#61AFEF",
+                    "brightPurple": "#C577DD",
+                    "brightCyan": "#56B5C1",
+                    "brightWhite": "#FFFFFF"
+                }
             ]
         })" };
 
@@ -601,7 +688,6 @@ namespace TerminalAppLocalTests
         auto result = RunOnUIThread([&page]() {
             SplitPaneArgs args{ SplitType::Duplicate };
             ActionEventArgs eventArgs{ args };
-            // eventArgs.Args(args);
             page->_HandleSplitPane(nullptr, eventArgs);
             auto firstTab = page->_GetTerminalTabImpl(page->_tabs.GetAt(0));
 
@@ -664,7 +750,7 @@ namespace TerminalAppLocalTests
         Log::Comment(L"Move focus. This will cause us to un-zoom.");
         result = RunOnUIThread([&page]() {
             // Set up action
-            MoveFocusArgs args{ Direction::Left };
+            MoveFocusArgs args{ FocusDirection::Left };
             ActionEventArgs eventArgs{ args };
 
             page->_HandleMoveFocus(nullptr, eventArgs);
@@ -782,8 +868,7 @@ namespace TerminalAppLocalTests
 
         Log::Comment(L"Switch to the next MRU tab, which is the fourth tab");
         TestOnUIThread([&page]() {
-            ActionEventArgs eventArgs{};
-            page->_HandleNextTab(nullptr, eventArgs);
+            page->_SelectNextTab(true, nullptr);
         });
 
         Log::Comment(L"Sleep to let events propagate");
@@ -804,8 +889,7 @@ namespace TerminalAppLocalTests
 
         Log::Comment(L"Switch to the next MRU tab, which is the second tab");
         TestOnUIThread([&page]() {
-            ActionEventArgs eventArgs{};
-            page->_HandleNextTab(nullptr, eventArgs);
+            page->_SelectNextTab(true, nullptr);
         });
 
         Log::Comment(L"Sleep to let events propagate");
@@ -829,8 +913,7 @@ namespace TerminalAppLocalTests
 
         Log::Comment(L"Switch to the next in-order tab, which is the third tab");
         TestOnUIThread([&page]() {
-            ActionEventArgs eventArgs{};
-            page->_HandleNextTab(nullptr, eventArgs);
+            page->_SelectNextTab(true, nullptr);
         });
         TestOnUIThread([&page]() {
             uint32_t focusedIndex = page->_GetFocusedTabIndex().value_or(-1);
@@ -842,8 +925,7 @@ namespace TerminalAppLocalTests
 
         Log::Comment(L"Switch to the next in-order tab, which is the fourth tab");
         TestOnUIThread([&page]() {
-            ActionEventArgs eventArgs{};
-            page->_HandleNextTab(nullptr, eventArgs);
+            page->_SelectNextTab(true, nullptr);
         });
         TestOnUIThread([&page]() {
             uint32_t focusedIndex = page->_GetFocusedTabIndex().value_or(-1);
@@ -865,14 +947,34 @@ namespace TerminalAppLocalTests
             page->_OpenNewTab(newTerminalArgs);
             page->_OpenNewTab(newTerminalArgs);
         });
-        VERIFY_ARE_EQUAL(4u, page->_mruTabActions.Size());
+        VERIFY_ARE_EQUAL(4u, page->_mruTabs.Size());
 
         Log::Comment(L"give alphabetical names to all switch tab actions");
-        RunOnUIThread([&page]() {
-            page->_tabs.GetAt(0).SwitchToTabCommand().Name(L"a");
-            page->_tabs.GetAt(1).SwitchToTabCommand().Name(L"b");
-            page->_tabs.GetAt(2).SwitchToTabCommand().Name(L"c");
-            page->_tabs.GetAt(3).SwitchToTabCommand().Name(L"d");
+        TestOnUIThread([&page]() {
+            page->_GetTerminalTabImpl(page->_tabs.GetAt(0))->Title(L"a");
+        });
+        TestOnUIThread([&page]() {
+            page->_GetTerminalTabImpl(page->_tabs.GetAt(1))->Title(L"b");
+        });
+        TestOnUIThread([&page]() {
+            page->_GetTerminalTabImpl(page->_tabs.GetAt(2))->Title(L"c");
+        });
+        TestOnUIThread([&page]() {
+            page->_GetTerminalTabImpl(page->_tabs.GetAt(3))->Title(L"d");
+        });
+
+        TestOnUIThread([&page]() {
+            Log::Comment(L"Sanity check the titles of our tabs are what we set them to.");
+
+            VERIFY_ARE_EQUAL(L"a", page->_tabs.GetAt(0).Title());
+            VERIFY_ARE_EQUAL(L"b", page->_tabs.GetAt(1).Title());
+            VERIFY_ARE_EQUAL(L"c", page->_tabs.GetAt(2).Title());
+            VERIFY_ARE_EQUAL(L"d", page->_tabs.GetAt(3).Title());
+
+            VERIFY_ARE_EQUAL(L"d", page->_mruTabs.GetAt(0).Title());
+            VERIFY_ARE_EQUAL(L"c", page->_mruTabs.GetAt(1).Title());
+            VERIFY_ARE_EQUAL(L"b", page->_mruTabs.GetAt(2).Title());
+            VERIFY_ARE_EQUAL(L"a", page->_mruTabs.GetAt(3).Title());
         });
 
         Log::Comment(L"Change the tab switch order to MRU switching");
@@ -882,33 +984,362 @@ namespace TerminalAppLocalTests
 
         Log::Comment(L"Select the tabs from 0 to 3");
         RunOnUIThread([&page]() {
-            page->_UpdatedSelectedTab(0);
-            page->_UpdatedSelectedTab(1);
-            page->_UpdatedSelectedTab(2);
-            page->_UpdatedSelectedTab(3);
+            page->_UpdatedSelectedTab(page->_tabs.GetAt(0));
+            page->_UpdatedSelectedTab(page->_tabs.GetAt(1));
+            page->_UpdatedSelectedTab(page->_tabs.GetAt(2));
+            page->_UpdatedSelectedTab(page->_tabs.GetAt(3));
         });
 
-        VERIFY_ARE_EQUAL(4u, page->_mruTabActions.Size());
-        VERIFY_ARE_EQUAL(L"d", page->_mruTabActions.GetAt(0).Name());
-        VERIFY_ARE_EQUAL(L"c", page->_mruTabActions.GetAt(1).Name());
-        VERIFY_ARE_EQUAL(L"b", page->_mruTabActions.GetAt(2).Name());
-        VERIFY_ARE_EQUAL(L"a", page->_mruTabActions.GetAt(3).Name());
+        VERIFY_ARE_EQUAL(4u, page->_mruTabs.Size());
+        VERIFY_ARE_EQUAL(L"d", page->_mruTabs.GetAt(0).Title());
+        VERIFY_ARE_EQUAL(L"c", page->_mruTabs.GetAt(1).Title());
+        VERIFY_ARE_EQUAL(L"b", page->_mruTabs.GetAt(2).Title());
+        VERIFY_ARE_EQUAL(L"a", page->_mruTabs.GetAt(3).Title());
 
         Log::Comment(L"Switch to the next MRU tab, which is the third tab");
         RunOnUIThread([&page]() {
-            page->_SelectNextTab(true);
+            page->_SelectNextTab(true, nullptr);
+            // In the course of a single tick, the Command Palette will:
+            // * open
+            // * select the proper tab from the mru's list
+            // * raise an event for _filteredActionsView().SelectionChanged to
+            //   immediately preview the new tab
+            // * raise a _SwitchToTabRequestedHandlers event
+            // * then dismiss itself, because we can't fake holing down an
+            //   anchor key in the tests
         });
 
-        const auto palette = winrt::get_self<implementation::CommandPalette>(page->CommandPalette());
+        TestOnUIThread([&page]() {
+            VERIFY_ARE_EQUAL(L"c", page->_mruTabs.GetAt(0).Title());
+            VERIFY_ARE_EQUAL(L"d", page->_mruTabs.GetAt(1).Title());
+            VERIFY_ARE_EQUAL(L"b", page->_mruTabs.GetAt(2).Title());
+            VERIFY_ARE_EQUAL(L"a", page->_mruTabs.GetAt(3).Title());
+        });
 
-        VERIFY_ARE_EQUAL(1u, palette->_switcherStartIdx, L"Verify the index is 1 as we went right");
-        VERIFY_ARE_EQUAL(implementation::CommandPaletteMode::TabSwitchMode, palette->_currentMode, L"Verify we are in the tab switcher mode");
+        const auto palette = winrt::get_self<winrt::TerminalApp::implementation::CommandPalette>(page->CommandPalette());
 
-        Log::Comment(L"Verify command palette preserves MRU order of tabs");
-        VERIFY_ARE_EQUAL(4u, palette->_filteredActions.Size());
-        VERIFY_ARE_EQUAL(L"d", palette->_filteredActions.GetAt(0).Command().Name());
-        VERIFY_ARE_EQUAL(L"c", palette->_filteredActions.GetAt(1).Command().Name());
-        VERIFY_ARE_EQUAL(L"b", palette->_filteredActions.GetAt(2).Command().Name());
-        VERIFY_ARE_EQUAL(L"a", palette->_filteredActions.GetAt(3).Command().Name());
+        VERIFY_ARE_EQUAL(winrt::TerminalApp::implementation::CommandPaletteMode::TabSwitchMode, palette->_currentMode, L"Verify we are in the tab switcher mode");
+        // At this point, the contents of the command palette's _mruTabs list is
+        // still the _old_ ordering (d, c, b, a). The ordering is only updated
+        // in TerminalPage::_SelectNextTab, but as we saw before, the palette
+        // will also dismiss itself immediately when that's called. So we can't
+        // really inspect the contents of the list in this test, unfortunately.
     }
+
+    void TabTests::TestWindowRenameSuccessful()
+    {
+        BEGIN_TEST_METHOD_PROPERTIES()
+            TEST_METHOD_PROPERTY(L"IsolationLevel", L"Method")
+        END_TEST_METHOD_PROPERTIES()
+
+        auto page = _commonSetup();
+        page->RenameWindowRequested([&page](auto&&, const winrt::TerminalApp::RenameWindowRequestedArgs args) {
+            // In the real terminal, this would bounce up to the monarch and
+            // come back down. Instead, immediately call back and set the name.
+            page->WindowName(args.ProposedName());
+        });
+
+        bool windowNameChanged = false;
+        page->PropertyChanged([&page, &windowNameChanged](auto&&, const winrt::WUX::Data::PropertyChangedEventArgs& args) mutable {
+            if (args.PropertyName() == L"WindowNameForDisplay")
+            {
+                windowNameChanged = true;
+            }
+        });
+
+        TestOnUIThread([&page]() {
+            page->_RequestWindowRename(winrt::hstring{ L"Foo" });
+        });
+        TestOnUIThread([&]() {
+            VERIFY_ARE_EQUAL(L"Foo", page->_WindowName);
+            VERIFY_IS_TRUE(windowNameChanged,
+                           L"The window name should have changed, and we should have raised a notification that WindowNameForDisplay changed");
+        });
+    }
+    void TabTests::TestWindowRenameFailure()
+    {
+        BEGIN_TEST_METHOD_PROPERTIES()
+            TEST_METHOD_PROPERTY(L"IsolationLevel", L"Method")
+        END_TEST_METHOD_PROPERTIES()
+
+        auto page = _commonSetup();
+        page->RenameWindowRequested([&page](auto&&, auto&&) {
+            // In the real terminal, this would bounce up to the monarch and
+            // come back down. Instead, immediately call back to tell the terminal it failed.
+            page->RenameFailed();
+        });
+
+        bool windowNameChanged = false;
+
+        page->PropertyChanged([&page, &windowNameChanged](auto&&, const winrt::WUX::Data::PropertyChangedEventArgs& args) mutable {
+            if (args.PropertyName() == L"WindowNameForDisplay")
+            {
+                windowNameChanged = true;
+            }
+        });
+
+        TestOnUIThread([&page]() {
+            page->_RequestWindowRename(winrt::hstring{ L"Foo" });
+        });
+        TestOnUIThread([&]() {
+            VERIFY_IS_FALSE(windowNameChanged,
+                            L"The window name should not have changed, we should have rejected the change.");
+        });
+    }
+
+    void TabTests::TestControlSettingsHasParent()
+    {
+        Log::Comment(L"Ensure that when we create a control, it always has a parent TerminalSettings");
+
+        auto page = _commonSetup();
+        VERIFY_IS_NOT_NULL(page);
+
+        TestOnUIThread([&page]() {
+            const auto& activeControl{ page->_GetActiveControl() };
+            VERIFY_IS_NOT_NULL(activeControl);
+
+            const auto& controlSettings = activeControl.Settings().as<TerminalSettings>();
+            VERIFY_IS_NOT_NULL(controlSettings);
+
+            const auto& originalSettings = controlSettings.GetParent();
+            VERIFY_IS_NOT_NULL(originalSettings);
+        });
+    }
+
+    void TabTests::TestPreviewCommitScheme()
+    {
+        Log::Comment(L"Preview a color scheme. Make sure it's applied, then committed accordingly");
+
+        auto page = _commonSetup();
+        VERIFY_IS_NOT_NULL(page);
+
+        TestOnUIThread([&page]() {
+            const auto& activeControl{ page->_GetActiveControl() };
+            VERIFY_IS_NOT_NULL(activeControl);
+
+            const auto& controlSettings = activeControl.Settings().as<TerminalSettings>();
+            VERIFY_IS_NOT_NULL(controlSettings);
+
+            const auto& originalSettings = controlSettings.GetParent();
+            VERIFY_IS_NOT_NULL(originalSettings);
+
+            VERIFY_ARE_EQUAL(til::color{ 0xff0c0c0c }, controlSettings.DefaultBackground());
+        });
+
+        TestOnUIThread([&page]() {
+            Log::Comment(L"Emulate previewing the SetColorScheme action");
+            SetColorSchemeArgs args{ L"Vintage" };
+            page->_PreviewColorScheme(args);
+        });
+
+        TestOnUIThread([&page]() {
+            const auto& activeControl{ page->_GetActiveControl() };
+            VERIFY_IS_NOT_NULL(activeControl);
+
+            const auto& controlSettings = activeControl.Settings().as<TerminalSettings>();
+            VERIFY_IS_NOT_NULL(controlSettings);
+
+            const auto& previewSettings = controlSettings.GetParent();
+            VERIFY_IS_NOT_NULL(previewSettings);
+
+            const auto& originalSettings = previewSettings.GetParent();
+            VERIFY_IS_NOT_NULL(originalSettings);
+
+            Log::Comment(L"Color should be changed to the preview");
+            VERIFY_ARE_EQUAL(til::color{ 0xff000000 }, controlSettings.DefaultBackground());
+            VERIFY_ARE_EQUAL(originalSettings, page->_originalSettings);
+        });
+
+        TestOnUIThread([&page]() {
+            Log::Comment(L"Emulate committing the SetColorScheme action");
+
+            SetColorSchemeArgs args{ L"Vintage" };
+            page->_EndPreviewColorScheme();
+            page->_HandleSetColorScheme(nullptr, ActionEventArgs{ args });
+        });
+
+        TestOnUIThread([&page]() {
+            const auto& activeControl{ page->_GetActiveControl() };
+            VERIFY_IS_NOT_NULL(activeControl);
+
+            const auto& controlSettings = activeControl.Settings().as<TerminalSettings>();
+            VERIFY_IS_NOT_NULL(controlSettings);
+
+            const auto& originalSettings = controlSettings.GetParent();
+            VERIFY_IS_NOT_NULL(originalSettings);
+
+            const auto& grandparentSettings = originalSettings.GetParent();
+            VERIFY_IS_NULL(grandparentSettings);
+
+            Log::Comment(L"Color should be changed");
+            VERIFY_ARE_EQUAL(til::color{ 0xff000000 }, controlSettings.DefaultBackground());
+            VERIFY_ARE_EQUAL(nullptr, page->_originalSettings);
+        });
+    }
+
+    void TabTests::TestPreviewDismissScheme()
+    {
+        Log::Comment(L"Preview a color scheme. Make sure it's applied, then dismissed accordingly");
+
+        auto page = _commonSetup();
+        VERIFY_IS_NOT_NULL(page);
+
+        TestOnUIThread([&page]() {
+            const auto& activeControl{ page->_GetActiveControl() };
+            VERIFY_IS_NOT_NULL(activeControl);
+
+            const auto& controlSettings = activeControl.Settings().as<TerminalSettings>();
+            VERIFY_IS_NOT_NULL(controlSettings);
+
+            const auto& originalSettings = controlSettings.GetParent();
+            VERIFY_IS_NOT_NULL(originalSettings);
+
+            VERIFY_ARE_EQUAL(til::color{ 0xff0c0c0c }, controlSettings.DefaultBackground());
+        });
+
+        TestOnUIThread([&page]() {
+            Log::Comment(L"Emulate previewing the SetColorScheme action");
+            SetColorSchemeArgs args{ L"Vintage" };
+            page->_PreviewColorScheme(args);
+        });
+
+        TestOnUIThread([&page]() {
+            const auto& activeControl{ page->_GetActiveControl() };
+            VERIFY_IS_NOT_NULL(activeControl);
+
+            const auto& controlSettings = activeControl.Settings().as<TerminalSettings>();
+            VERIFY_IS_NOT_NULL(controlSettings);
+
+            const auto& previewSettings = controlSettings.GetParent();
+            VERIFY_IS_NOT_NULL(previewSettings);
+
+            const auto& originalSettings = previewSettings.GetParent();
+            VERIFY_IS_NOT_NULL(originalSettings);
+
+            Log::Comment(L"Color should be changed to the preview");
+            VERIFY_ARE_EQUAL(til::color{ 0xff000000 }, controlSettings.DefaultBackground());
+            VERIFY_ARE_EQUAL(originalSettings, page->_originalSettings);
+        });
+
+        TestOnUIThread([&page]() {
+            Log::Comment(L"Emulate dismissing the SetColorScheme action");
+            page->_EndPreviewColorScheme();
+        });
+
+        TestOnUIThread([&page]() {
+            const auto& activeControl{ page->_GetActiveControl() };
+            VERIFY_IS_NOT_NULL(activeControl);
+
+            const auto& controlSettings = activeControl.Settings().as<TerminalSettings>();
+            VERIFY_IS_NOT_NULL(controlSettings);
+
+            const auto& originalSettings = controlSettings.GetParent();
+            VERIFY_IS_NOT_NULL(originalSettings);
+
+            const auto& grandparentSettings = originalSettings.GetParent();
+            VERIFY_IS_NULL(grandparentSettings);
+
+            Log::Comment(L"Color should be the same as it originally was");
+            VERIFY_ARE_EQUAL(til::color{ 0xff0c0c0c }, controlSettings.DefaultBackground());
+            VERIFY_ARE_EQUAL(nullptr, page->_originalSettings);
+        });
+    }
+
+    void TabTests::TestPreviewSchemeWhilePreviewing()
+    {
+        Log::Comment(L"Preview a color scheme, then preview another scheme. ");
+
+        Log::Comment(L"Preview a color scheme. Make sure it's applied, then committed accordingly");
+
+        auto page = _commonSetup();
+        VERIFY_IS_NOT_NULL(page);
+
+        TestOnUIThread([&page]() {
+            const auto& activeControl{ page->_GetActiveControl() };
+            VERIFY_IS_NOT_NULL(activeControl);
+
+            const auto& controlSettings = activeControl.Settings().as<TerminalSettings>();
+            VERIFY_IS_NOT_NULL(controlSettings);
+
+            const auto& originalSettings = controlSettings.GetParent();
+            VERIFY_IS_NOT_NULL(originalSettings);
+
+            VERIFY_ARE_EQUAL(til::color{ 0xff0c0c0c }, controlSettings.DefaultBackground());
+        });
+
+        TestOnUIThread([&page]() {
+            Log::Comment(L"Emulate previewing the SetColorScheme action");
+            SetColorSchemeArgs args{ L"Vintage" };
+            page->_PreviewColorScheme(args);
+        });
+
+        TestOnUIThread([&page]() {
+            const auto& activeControl{ page->_GetActiveControl() };
+            VERIFY_IS_NOT_NULL(activeControl);
+
+            const auto& controlSettings = activeControl.Settings().as<TerminalSettings>();
+            VERIFY_IS_NOT_NULL(controlSettings);
+
+            const auto& previewSettings = controlSettings.GetParent();
+            VERIFY_IS_NOT_NULL(previewSettings);
+
+            const auto& originalSettings = previewSettings.GetParent();
+            VERIFY_IS_NOT_NULL(originalSettings);
+
+            Log::Comment(L"Color should be changed to the preview");
+            VERIFY_ARE_EQUAL(til::color{ 0xff000000 }, controlSettings.DefaultBackground());
+            VERIFY_ARE_EQUAL(originalSettings, page->_originalSettings);
+        });
+
+        TestOnUIThread([&page]() {
+            Log::Comment(L"Now, preview another scheme");
+            SetColorSchemeArgs args{ L"One Half Light" };
+            page->_PreviewColorScheme(args);
+        });
+
+        TestOnUIThread([&page]() {
+            const auto& activeControl{ page->_GetActiveControl() };
+            VERIFY_IS_NOT_NULL(activeControl);
+
+            const auto& controlSettings = activeControl.Settings().as<TerminalSettings>();
+            VERIFY_IS_NOT_NULL(controlSettings);
+
+            const auto& previewSettings = controlSettings.GetParent();
+            VERIFY_IS_NOT_NULL(previewSettings);
+
+            const auto& originalSettings = previewSettings.GetParent();
+            VERIFY_IS_NOT_NULL(originalSettings);
+
+            Log::Comment(L"Color should be changed to the preview");
+            VERIFY_ARE_EQUAL(til::color{ 0xffFAFAFA }, controlSettings.DefaultBackground());
+            VERIFY_ARE_EQUAL(originalSettings, page->_originalSettings);
+        });
+
+        TestOnUIThread([&page]() {
+            Log::Comment(L"Emulate committing the SetColorScheme action");
+
+            SetColorSchemeArgs args{ L"One Half Light" };
+            page->_EndPreviewColorScheme();
+            page->_HandleSetColorScheme(nullptr, ActionEventArgs{ args });
+        });
+
+        TestOnUIThread([&page]() {
+            const auto& activeControl{ page->_GetActiveControl() };
+            VERIFY_IS_NOT_NULL(activeControl);
+
+            const auto& controlSettings = activeControl.Settings().as<TerminalSettings>();
+            VERIFY_IS_NOT_NULL(controlSettings);
+
+            const auto& originalSettings = controlSettings.GetParent();
+            VERIFY_IS_NOT_NULL(originalSettings);
+
+            const auto& grandparentSettings = originalSettings.GetParent();
+            VERIFY_IS_NULL(grandparentSettings);
+
+            Log::Comment(L"Color should be changed");
+            VERIFY_ARE_EQUAL(til::color{ 0xffFAFAFA }, controlSettings.DefaultBackground());
+            VERIFY_ARE_EQUAL(nullptr, page->_originalSettings);
+        });
+    }
+
 }

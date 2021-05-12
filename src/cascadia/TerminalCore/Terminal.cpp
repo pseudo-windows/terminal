@@ -11,9 +11,9 @@
 #include "../../types/inc/utils.hpp"
 #include "../../types/inc/colorTable.hpp"
 
-#include <winrt/Microsoft.Terminal.TerminalControl.h>
+#include <winrt/Microsoft.Terminal.Core.h>
 
-using namespace winrt::Microsoft::Terminal::TerminalControl;
+using namespace winrt::Microsoft::Terminal::Core;
 using namespace Microsoft::Terminal::Core;
 using namespace Microsoft::Console;
 using namespace Microsoft::Console::Render;
@@ -52,7 +52,8 @@ Terminal::Terminal() :
     _blockSelection{ false },
     _selection{ std::nullopt },
     _taskbarState{ 0 },
-    _taskbarProgress{ 0 }
+    _taskbarProgress{ 0 },
+    _trimBlockSelection{ false }
 {
     auto dispatch = std::make_unique<TerminalDispatch>(*this);
     auto engine = std::make_unique<OutputStateMachineEngine>(std::move(dispatch));
@@ -112,11 +113,63 @@ void Terminal::CreateFromSettings(ICoreSettings settings,
 // - settings: an ICoreSettings with new settings values for us to use.
 void Terminal::UpdateSettings(ICoreSettings settings)
 {
-    _defaultFg = settings.DefaultForeground();
-    _defaultBg = settings.DefaultBackground();
+    UpdateAppearance(settings);
+
+    _snapOnInput = settings.SnapOnInput();
+    _altGrAliasing = settings.AltGrAliasing();
+    _wordDelimiters = settings.WordDelimiters();
+    _suppressApplicationTitle = settings.SuppressApplicationTitle();
+    _startingTitle = settings.StartingTitle();
+    _trimBlockSelection = settings.TrimBlockSelection();
+
+    _terminalInput->ForceDisableWin32InputMode(settings.ForceVTInput());
+
+    if (settings.TabColor() == nullptr)
+    {
+        _tabColor = std::nullopt;
+    }
+    else
+    {
+        _tabColor = til::color{ settings.TabColor().Value() }.with_alpha(0xff);
+    }
+
+    if (!_startingTabColor && settings.StartingTabColor())
+    {
+        _startingTabColor = til::color{ settings.StartingTabColor().Value() }.with_alpha(0xff);
+    }
+
+    if (_pfnTabColorChanged)
+    {
+        _pfnTabColorChanged(GetTabColor());
+    }
+
+    // TODO:MSFT:21327402 - if HistorySize has changed, resize the buffer so we
+    // have a smaller scrollback. We should do this carefully - if the new buffer
+    // size is smaller than where the mutable viewport currently is, we'll want
+    // to make sure to rotate the buffer contents upwards, so the mutable viewport
+    // remains at the bottom of the buffer.
+}
+
+// Method Description:
+// - Update our internal properties to match the new values in the provided
+//   CoreAppearance object.
+// Arguments:
+// - appearance: an ICoreAppearance with new settings values for us to use.
+void Terminal::UpdateAppearance(const ICoreAppearance& appearance)
+{
+    // Set the default background as transparent to prevent the
+    // DX layer from overwriting the background image or acrylic effect
+    til::color newBackgroundColor{ appearance.DefaultBackground() };
+    _defaultBg = newBackgroundColor.with_alpha(0);
+    _defaultFg = appearance.DefaultForeground();
+
+    for (int i = 0; i < 16; i++)
+    {
+        _colorTable.at(i) = til::color{ appearance.GetColorTableEntry(i) };
+    }
 
     CursorType cursorShape = CursorType::VerticalBar;
-    switch (settings.CursorShape())
+    switch (appearance.CursorShape())
     {
     case CursorStyle::Underscore:
         cursorShape = CursorType::Underscore;
@@ -130,6 +183,9 @@ void Terminal::UpdateSettings(ICoreSettings settings)
     case CursorStyle::Vintage:
         cursorShape = CursorType::Legacy;
         break;
+    case CursorStyle::DoubleUnderscore:
+        cursorShape = CursorType::DoubleUnderscore;
+        break;
     default:
     case CursorStyle::Bar:
         cursorShape = CursorType::VerticalBar;
@@ -138,50 +194,12 @@ void Terminal::UpdateSettings(ICoreSettings settings)
 
     if (_buffer)
     {
-        _buffer->GetCursor().SetStyle(settings.CursorHeight(),
-                                      settings.CursorColor(),
+        _buffer->GetCursor().SetStyle(appearance.CursorHeight(),
+                                      til::color{ appearance.CursorColor() },
                                       cursorShape);
     }
 
     _defaultCursorShape = cursorShape;
-
-    for (int i = 0; i < 16; i++)
-    {
-        _colorTable.at(i) = settings.GetColorTableEntry(i);
-    }
-
-    _snapOnInput = settings.SnapOnInput();
-    _altGrAliasing = settings.AltGrAliasing();
-    _wordDelimiters = settings.WordDelimiters();
-    _suppressApplicationTitle = settings.SuppressApplicationTitle();
-    _startingTitle = settings.StartingTitle();
-
-    _terminalInput->ForceDisableWin32InputMode(settings.ForceVTInput());
-
-    if (settings.TabColor() == nullptr)
-    {
-        _tabColor = std::nullopt;
-    }
-    else
-    {
-        _tabColor = til::color(settings.TabColor().Value() | 0xff000000);
-    }
-
-    if (!_startingTabColor && settings.StartingTabColor())
-    {
-        _startingTabColor = til::color(settings.StartingTabColor().Value() | 0xff000000);
-    }
-
-    if (_pfnTabColorChanged)
-    {
-        _pfnTabColorChanged(GetTabColor());
-    }
-
-    // TODO:MSFT:21327402 - if HistorySize has changed, resize the buffer so we
-    // have a smaller scrollback. We should do this carefully - if the new buffer
-    // size is smaller than where the mutable viewport currently is, we'll want
-    // to make sure to rotate the buffer contents upwards, so the mutable viewport
-    // remains at the bottom of the buffer.
 }
 
 // Method Description:
@@ -229,8 +247,14 @@ void Terminal::UpdateSettings(ICoreSettings settings)
     std::unique_ptr<TextBuffer> newTextBuffer;
     try
     {
+        // GH#3848 - Stash away the current attributes the old text buffer is
+        // using. We'll initialize the new buffer with the default attributes,
+        // but after the resize, we'll want to make sure that the new buffer's
+        // current attributes (the ones used for printing new text) match the
+        // old buffer's.
+        const auto oldBufferAttributes = _buffer->GetCurrentAttributes();
         newTextBuffer = std::make_unique<TextBuffer>(bufferSize,
-                                                     _buffer->GetCurrentAttributes(),
+                                                     TextAttribute{},
                                                      0, // temporarily set size to 0 so it won't render.
                                                      _buffer->GetRenderTarget());
 
@@ -258,6 +282,9 @@ void Terminal::UpdateSettings(ICoreSettings settings)
 
         newViewportTop = oldRows.mutableViewportTop;
         newVisibleTop = oldRows.visibleViewportTop;
+
+        // Restore the active text attributes
+        newTextBuffer->SetCurrentAttributes(oldBufferAttributes);
     }
     CATCH_RETURN();
 
@@ -329,8 +356,8 @@ void Terminal::UpdateSettings(ICoreSettings settings)
             {
                 try
                 {
-                    auto row = newTextBuffer->GetRowByOffset(::base::ClampSub(proposedTop, 1));
-                    if (row.GetCharRow().WasWrapForced())
+                    auto& row = newTextBuffer->GetRowByOffset(::base::ClampSub(proposedTop, 1));
+                    if (row.WasWrapForced())
                     {
                         proposedTop--;
                     }
@@ -392,6 +419,24 @@ void Terminal::Write(std::wstring_view stringView)
     auto lock = LockForWriting();
 
     _stateMachine->ProcessString(stringView);
+}
+
+void Terminal::WritePastedText(std::wstring_view stringView)
+{
+    auto option = ::Microsoft::Console::Utils::FilterOption::CarriageReturnNewline |
+                  ::Microsoft::Console::Utils::FilterOption::ControlCodes;
+
+    std::wstring filtered = ::Microsoft::Console::Utils::FilterStringForPaste(stringView, option);
+    if (IsXtermBracketedPasteModeEnabled())
+    {
+        filtered.insert(0, L"\x1b[200~");
+        filtered.append(L"\x1b[201~");
+    }
+
+    if (_pfnWriteInput)
+    {
+        _pfnWriteInput(filtered);
+    }
 }
 
 // Method Description:
@@ -1076,7 +1121,7 @@ void Terminal::SetWarningBellCallback(std::function<void()> pfn) noexcept
     _pfnWarningBell.swap(pfn);
 }
 
-void Terminal::SetTitleChangedCallback(std::function<void(const std::wstring_view&)> pfn) noexcept
+void Terminal::SetTitleChangedCallback(std::function<void(std::wstring_view)> pfn) noexcept
 {
     _pfnTitleChanged.swap(pfn);
 }
@@ -1086,7 +1131,7 @@ void Terminal::SetTabColorChangedCallback(std::function<void(const std::optional
     _pfnTabColorChanged.swap(pfn);
 }
 
-void Terminal::SetCopyToClipboardCallback(std::function<void(const std::wstring_view&)> pfn) noexcept
+void Terminal::SetCopyToClipboardCallback(std::function<void(std::wstring_view)> pfn) noexcept
 {
     _pfnCopyToClipboard.swap(pfn);
 }
@@ -1104,8 +1149,8 @@ void Terminal::SetCursorPositionChangedCallback(std::function<void()> pfn) noexc
 // Method Description:
 // - Allows setting a callback for when the background color is changed
 // Arguments:
-// - pfn: a function callback that takes a uint32 (DWORD COLORREF) color in the format 0x00BBGGRR
-void Terminal::SetBackgroundCallback(std::function<void(const COLORREF)> pfn) noexcept
+// - pfn: a function callback that takes a color
+void Terminal::SetBackgroundCallback(std::function<void(const til::color)> pfn) noexcept
 {
     _pfnBackgroundColorChanged.swap(pfn);
 }

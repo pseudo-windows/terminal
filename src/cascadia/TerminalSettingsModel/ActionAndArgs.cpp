@@ -19,10 +19,9 @@ static constexpr std::string_view ExecuteCommandlineKey{ "wt" };
 static constexpr std::string_view FindKey{ "find" };
 static constexpr std::string_view MoveFocusKey{ "moveFocus" };
 static constexpr std::string_view NewTabKey{ "newTab" };
-static constexpr std::string_view NewWindowKey{ "newWindow" };
 static constexpr std::string_view NextTabKey{ "nextTab" };
 static constexpr std::string_view OpenNewTabDropdownKey{ "openNewTabDropdown" };
-static constexpr std::string_view OpenSettingsKey{ "openSettings" }; // TODO GH#2557: Add args for OpenSettings
+static constexpr std::string_view OpenSettingsKey{ "openSettings" };
 static constexpr std::string_view OpenTabColorPickerKey{ "openTabColorPicker" };
 static constexpr std::string_view PasteTextKey{ "paste" };
 static constexpr std::string_view PrevTabKey{ "prevTab" };
@@ -34,6 +33,8 @@ static constexpr std::string_view ScrolldownKey{ "scrollDown" };
 static constexpr std::string_view ScrolldownpageKey{ "scrollDownPage" };
 static constexpr std::string_view ScrollupKey{ "scrollUp" };
 static constexpr std::string_view ScrolluppageKey{ "scrollUpPage" };
+static constexpr std::string_view ScrollToTopKey{ "scrollToTop" };
+static constexpr std::string_view ScrollToBottomKey{ "scrollToBottom" };
 static constexpr std::string_view SendInputKey{ "sendInput" };
 static constexpr std::string_view SetColorSchemeKey{ "setColorScheme" };
 static constexpr std::string_view SetTabColorKey{ "setTabColor" };
@@ -45,8 +46,19 @@ static constexpr std::string_view ToggleCommandPaletteKey{ "commandPalette" };
 static constexpr std::string_view ToggleFocusModeKey{ "toggleFocusMode" };
 static constexpr std::string_view ToggleFullscreenKey{ "toggleFullscreen" };
 static constexpr std::string_view TogglePaneZoomKey{ "togglePaneZoom" };
-static constexpr std::string_view ToggleRetroEffectKey{ "toggleRetroEffect" };
+static constexpr std::string_view LegacyToggleRetroEffectKey{ "toggleRetroEffect" };
+static constexpr std::string_view ToggleShaderEffectsKey{ "toggleShaderEffects" };
 static constexpr std::string_view MoveTabKey{ "moveTab" };
+static constexpr std::string_view BreakIntoDebuggerKey{ "breakIntoDebugger" };
+static constexpr std::string_view FindMatchKey{ "findMatch" };
+static constexpr std::string_view TogglePaneReadOnlyKey{ "toggleReadOnlyMode" };
+static constexpr std::string_view NewWindowKey{ "newWindow" };
+static constexpr std::string_view IdentifyWindowKey{ "identifyWindow" };
+static constexpr std::string_view IdentifyWindowsKey{ "identifyWindows" };
+static constexpr std::string_view RenameWindowKey{ "renameWindow" };
+static constexpr std::string_view OpenWindowRenamerKey{ "openWindowRenamer" };
+static constexpr std::string_view GlobalSummonKey{ "globalSummon" };
+static constexpr std::string_view QuakeModeKey{ "quakeMode" };
 
 static constexpr std::string_view ActionKey{ "action" };
 
@@ -78,7 +90,6 @@ namespace winrt::Microsoft::Terminal::Settings::Model::implementation
         { FindKey, ShortcutAction::Find },
         { MoveFocusKey, ShortcutAction::MoveFocus },
         { NewTabKey, ShortcutAction::NewTab },
-        { NewWindowKey, ShortcutAction::NewWindow },
         { NextTabKey, ShortcutAction::NextTab },
         { OpenNewTabDropdownKey, ShortcutAction::OpenNewTabDropdown },
         { OpenSettingsKey, ShortcutAction::OpenSettings },
@@ -93,6 +104,8 @@ namespace winrt::Microsoft::Terminal::Settings::Model::implementation
         { ScrolldownpageKey, ShortcutAction::ScrollDownPage },
         { ScrollupKey, ShortcutAction::ScrollUp },
         { ScrolluppageKey, ShortcutAction::ScrollUpPage },
+        { ScrollToTopKey, ShortcutAction::ScrollToTop },
+        { ScrollToBottomKey, ShortcutAction::ScrollToBottom },
         { SendInputKey, ShortcutAction::SendInput },
         { SetColorSchemeKey, ShortcutAction::SetColorScheme },
         { SetTabColorKey, ShortcutAction::SetTabColor },
@@ -104,9 +117,20 @@ namespace winrt::Microsoft::Terminal::Settings::Model::implementation
         { ToggleFocusModeKey, ShortcutAction::ToggleFocusMode },
         { ToggleFullscreenKey, ShortcutAction::ToggleFullscreen },
         { TogglePaneZoomKey, ShortcutAction::TogglePaneZoom },
-        { ToggleRetroEffectKey, ShortcutAction::ToggleRetroEffect },
+        { LegacyToggleRetroEffectKey, ShortcutAction::ToggleShaderEffects },
+        { ToggleShaderEffectsKey, ShortcutAction::ToggleShaderEffects },
         { MoveTabKey, ShortcutAction::MoveTab },
+        { BreakIntoDebuggerKey, ShortcutAction::BreakIntoDebugger },
         { UnboundKey, ShortcutAction::Invalid },
+        { FindMatchKey, ShortcutAction::FindMatch },
+        { TogglePaneReadOnlyKey, ShortcutAction::TogglePaneReadOnly },
+        { NewWindowKey, ShortcutAction::NewWindow },
+        { IdentifyWindowKey, ShortcutAction::IdentifyWindow },
+        { IdentifyWindowsKey, ShortcutAction::IdentifyWindows },
+        { RenameWindowKey, ShortcutAction::RenameWindow },
+        { OpenWindowRenamerKey, ShortcutAction::OpenWindowRenamer },
+        { GlobalSummonKey, ShortcutAction::GlobalSummon },
+        { QuakeModeKey, ShortcutAction::QuakeMode },
     };
 
     using ParseResult = std::tuple<IActionArgs, std::vector<SettingsLoadWarnings>>;
@@ -136,6 +160,14 @@ namespace winrt::Microsoft::Terminal::Settings::Model::implementation
         { ShortcutAction::ScrollUp, ScrollUpArgs::FromJson },
         { ShortcutAction::ScrollDown, ScrollDownArgs::FromJson },
         { ShortcutAction::MoveTab, MoveTabArgs::FromJson },
+        { ShortcutAction::ToggleCommandPalette, ToggleCommandPaletteArgs::FromJson },
+        { ShortcutAction::FindMatch, FindMatchArgs::FromJson },
+        { ShortcutAction::NewWindow, NewWindowArgs::FromJson },
+        { ShortcutAction::PrevTab, PrevTabArgs::FromJson },
+        { ShortcutAction::NextTab, NextTabArgs::FromJson },
+        { ShortcutAction::RenameWindow, RenameWindowArgs::FromJson },
+        { ShortcutAction::GlobalSummon, GlobalSummonArgs::FromJson },
+        { ShortcutAction::QuakeMode, GlobalSummonArgs::QuakeModeFromJson },
 
         { ShortcutAction::Invalid, nullptr },
     };
@@ -174,7 +206,7 @@ namespace winrt::Microsoft::Terminal::Settings::Model::implementation
     //   appended to this vector.
     // Return Value:
     // - a deserialized ActionAndArgs corresponding to the values in json, or
-    //   null if we failed to deserialize an action.
+    //   an "invalid" action if we failed to deserialize an action.
     winrt::com_ptr<ActionAndArgs> ActionAndArgs::FromJson(const Json::Value& json,
                                                           std::vector<SettingsLoadWarnings>& warnings)
     {
@@ -229,22 +261,14 @@ namespace winrt::Microsoft::Terminal::Settings::Model::implementation
             // if an arg parser was registered, but failed, bail
             if (pfn && args == nullptr)
             {
-                return nullptr;
+                return make_self<ActionAndArgs>();
             }
         }
 
-        if (action != ShortcutAction::Invalid)
-        {
-            auto actionAndArgs = winrt::make_self<ActionAndArgs>();
-            actionAndArgs->Action(action);
-            actionAndArgs->Args(args);
-
-            return actionAndArgs;
-        }
-        else
-        {
-            return nullptr;
-        }
+        // Something like
+        //      { name: "foo", action: "unbound" }
+        // will _remove_ the "foo" command, by returning an "invalid" action here.
+        return make_self<ActionAndArgs>(action, args);
     }
 
     com_ptr<ActionAndArgs> ActionAndArgs::Copy() const
@@ -274,10 +298,9 @@ namespace winrt::Microsoft::Terminal::Settings::Model::implementation
                 { ShortcutAction::Invalid, L"" },
                 { ShortcutAction::MoveFocus, RS_(L"MoveFocusCommandKey") },
                 { ShortcutAction::NewTab, RS_(L"NewTabCommandKey") },
-                { ShortcutAction::NewWindow, RS_(L"NewWindowCommandKey") },
                 { ShortcutAction::NextTab, RS_(L"NextTabCommandKey") },
                 { ShortcutAction::OpenNewTabDropdown, RS_(L"OpenNewTabDropdownCommandKey") },
-                { ShortcutAction::OpenSettings, RS_(L"OpenSettingsCommandKey") },
+                { ShortcutAction::OpenSettings, RS_(L"OpenSettingsUICommandKey") },
                 { ShortcutAction::OpenTabColorPicker, RS_(L"OpenTabColorPickerCommandKey") },
                 { ShortcutAction::PasteText, RS_(L"PasteTextCommandKey") },
                 { ShortcutAction::PrevTab, RS_(L"PrevTabCommandKey") },
@@ -289,6 +312,8 @@ namespace winrt::Microsoft::Terminal::Settings::Model::implementation
                 { ShortcutAction::ScrollDownPage, RS_(L"ScrollDownPageCommandKey") },
                 { ShortcutAction::ScrollUp, RS_(L"ScrollUpCommandKey") },
                 { ShortcutAction::ScrollUpPage, RS_(L"ScrollUpPageCommandKey") },
+                { ShortcutAction::ScrollToTop, RS_(L"ScrollToTopCommandKey") },
+                { ShortcutAction::ScrollToBottom, RS_(L"ScrollToBottomCommandKey") },
                 { ShortcutAction::SendInput, L"" },
                 { ShortcutAction::SetColorScheme, L"" },
                 { ShortcutAction::SetTabColor, RS_(L"ResetTabColorCommandKey") },
@@ -296,12 +321,22 @@ namespace winrt::Microsoft::Terminal::Settings::Model::implementation
                 { ShortcutAction::SwitchToTab, RS_(L"SwitchToTabCommandKey") },
                 { ShortcutAction::TabSearch, RS_(L"TabSearchCommandKey") },
                 { ShortcutAction::ToggleAlwaysOnTop, RS_(L"ToggleAlwaysOnTopCommandKey") },
-                { ShortcutAction::ToggleCommandPalette, RS_(L"ToggleCommandPaletteCommandKey") },
+                { ShortcutAction::ToggleCommandPalette, L"" },
                 { ShortcutAction::ToggleFocusMode, RS_(L"ToggleFocusModeCommandKey") },
                 { ShortcutAction::ToggleFullscreen, RS_(L"ToggleFullscreenCommandKey") },
                 { ShortcutAction::TogglePaneZoom, RS_(L"TogglePaneZoomCommandKey") },
-                { ShortcutAction::ToggleRetroEffect, RS_(L"ToggleRetroEffectCommandKey") },
+                { ShortcutAction::ToggleShaderEffects, RS_(L"ToggleShaderEffectsCommandKey") },
                 { ShortcutAction::MoveTab, L"" }, // Intentionally omitted, must be generated by GenerateName
+                { ShortcutAction::BreakIntoDebugger, RS_(L"BreakIntoDebuggerCommandKey") },
+                { ShortcutAction::FindMatch, L"" }, // Intentionally omitted, must be generated by GenerateName
+                { ShortcutAction::TogglePaneReadOnly, RS_(L"TogglePaneReadOnlyCommandKey") },
+                { ShortcutAction::NewWindow, RS_(L"NewWindowCommandKey") },
+                { ShortcutAction::IdentifyWindow, RS_(L"IdentifyWindowCommandKey") },
+                { ShortcutAction::IdentifyWindows, RS_(L"IdentifyWindowsCommandKey") },
+                { ShortcutAction::RenameWindow, RS_(L"ResetWindowNameCommandKey") },
+                { ShortcutAction::OpenWindowRenamer, RS_(L"OpenWindowRenamerCommandKey") },
+                { ShortcutAction::GlobalSummon, L"" }, // Intentionally omitted, must be generated by GenerateName
+                { ShortcutAction::QuakeMode, RS_(L"QuakeModeCommandKey") },
             };
         }();
 

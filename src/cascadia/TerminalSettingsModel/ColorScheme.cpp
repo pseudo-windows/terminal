@@ -5,6 +5,7 @@
 #include "ColorScheme.h"
 #include "DefaultSettings.h"
 #include "../../types/inc/Utils.hpp"
+#include "../../types/inc/colorTable.hpp"
 #include "Utils.h"
 #include "JsonUtils.h"
 
@@ -41,14 +42,18 @@ static constexpr std::array<std::string_view, 16> TableColors = {
 };
 
 ColorScheme::ColorScheme() :
-    _Foreground{ DEFAULT_FOREGROUND_WITH_ALPHA },
-    _Background{ DEFAULT_BACKGROUND_WITH_ALPHA },
-    _SelectionBackground{ DEFAULT_FOREGROUND },
-    _CursorColor{ DEFAULT_CURSOR_COLOR }
+    ColorScheme(L"", DEFAULT_FOREGROUND, DEFAULT_BACKGROUND, DEFAULT_CURSOR_COLOR)
 {
+    Utils::InitializeCampbellColorTable(_table);
 }
 
-ColorScheme::ColorScheme(winrt::hstring name, Color defaultFg, Color defaultBg, Color cursorColor) :
+ColorScheme::ColorScheme(winrt::hstring name) :
+    ColorScheme(name, DEFAULT_FOREGROUND, DEFAULT_BACKGROUND, DEFAULT_CURSOR_COLOR)
+{
+    Utils::InitializeCampbellColorTable(_table);
+}
+
+ColorScheme::ColorScheme(winrt::hstring name, til::color defaultFg, til::color defaultBg, til::color cursorColor) :
     _Name{ name },
     _Foreground{ defaultFg },
     _Background{ defaultBg },
@@ -148,10 +153,10 @@ Json::Value ColorScheme::ToJson() const
     return json;
 }
 
-winrt::com_array<Color> ColorScheme::Table() const noexcept
+winrt::com_array<winrt::Microsoft::Terminal::Core::Color> ColorScheme::Table() const noexcept
 {
-    winrt::com_array<Color> result{ base::checked_cast<uint32_t>(_table.size()) };
-    std::transform(_table.begin(), _table.end(), result.begin(), [](til::color c) -> Color { return c; });
+    winrt::com_array<winrt::Microsoft::Terminal::Core::Color> result{ base::checked_cast<uint32_t>(_table.size()) };
+    std::transform(_table.begin(), _table.end(), result.begin(), [](til::color c) -> winrt::Microsoft::Terminal::Core::Color { return c; });
     return result;
 }
 
@@ -162,10 +167,33 @@ winrt::com_array<Color> ColorScheme::Table() const noexcept
 // - value: the color value we are setting the color table color to
 // Return Value:
 // - none
-void ColorScheme::SetColorTableEntry(uint8_t index, const winrt::Windows::UI::Color& value) noexcept
+void ColorScheme::SetColorTableEntry(uint8_t index, const winrt::Microsoft::Terminal::Core::Color& value) noexcept
 {
     THROW_HR_IF(E_INVALIDARG, index > _table.size() - 1);
     _table[index] = value;
+}
+
+// Method Description:
+// - Validates a given color scheme
+// - A color scheme is valid if it has a name and defines all the colors
+// Arguments:
+// - The color scheme to validate
+// Return Value:
+// - true if the scheme is valid, false otherwise
+bool ColorScheme::ValidateColorScheme(const Json::Value& scheme)
+{
+    for (const auto& key : TableColors)
+    {
+        if (!scheme.isMember(JsonKey(key)))
+        {
+            return false;
+        }
+    }
+    if (!scheme.isMember(JsonKey(NameKey)))
+    {
+        return false;
+    }
+    return true;
 }
 
 // Method Description:

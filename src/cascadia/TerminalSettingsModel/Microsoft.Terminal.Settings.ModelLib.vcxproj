@@ -16,12 +16,21 @@
 
   <!-- ========================= Headers ======================== -->
   <ItemGroup>
+    <ClInclude Include="DefaultTerminal.h" >
+        <DependentUpon>DefaultTerminal.idl</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="IconPathConverter.h">
+      <DependentUpon>IconPathConverter.idl</DependentUpon>
+    </ClInclude>
     <ClInclude Include="pch.h" />
     <ClInclude Include="ActionArgs.h">
       <DependentUpon>ActionArgs.idl</DependentUpon>
     </ClInclude>
     <ClInclude Include="ActionAndArgs.h">
       <DependentUpon>ActionArgs.idl</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="ActionMap.h">
+      <DependentUpon>ActionMap.idl</DependentUpon>
     </ClInclude>
     <ClInclude Include="AzureCloudShellGenerator.h" />
     <ClInclude Include="CascadiaSettings.h">
@@ -40,17 +49,24 @@
     <ClInclude Include="IInheritable.h" />
     <ClInclude Include="IDynamicProfileGenerator.h" />
     <ClInclude Include="JsonUtils.h" />
+    <ClInclude Include="HashUtils.h" />
     <ClInclude Include="KeyChordSerialization.h">
       <DependentUpon>KeyChordSerialization.idl</DependentUpon>
-    </ClInclude>
-    <ClInclude Include="KeyMapping.h">
-      <DependentUpon>KeyMapping.idl</DependentUpon>
     </ClInclude>
     <ClInclude Include="PowershellCoreProfileGenerator.h" />
     <ClInclude Include="Profile.h">
       <DependentUpon>Profile.idl</DependentUpon>
     </ClInclude>
+    <ClInclude Include="AppearanceConfig.h">
+      <DependentUpon>AppearanceConfig.idl</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="EnumMappings.h">
+      <DependentUpon>EnumMappings.idl</DependentUpon>
+    </ClInclude>
     <ClInclude Include="SettingsTypes.h" />
+    <ClInclude Include="TerminalSettings.h">
+      <DependentUpon>TerminalSettings.idl</DependentUpon>
+    </ClInclude>
     <ClInclude Include="TerminalSettingsSerializationHelpers.h" />
     <ClInclude Include="TerminalWarnings.h">
       <DependentUpon>TerminalWarnings.idl</DependentUpon>
@@ -59,6 +75,12 @@
   </ItemGroup>
   <!-- ========================= Cpp Files ======================== -->
   <ItemGroup>
+    <ClCompile Include="DefaultTerminal.cpp">
+        <DependentUpon>DefaultTerminal.idl</DependentUpon>
+      </ClCompile>
+    <ClCompile Include="IconPathConverter.cpp">
+      <DependentUpon>IconPathConverter.idl</DependentUpon>
+    </ClCompile>
     <ClCompile Include="init.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
@@ -68,6 +90,12 @@
     </ClCompile>
     <ClCompile Include="ActionArgs.cpp">
       <DependentUpon>ActionArgs.idl</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="ActionMap.cpp">
+      <DependentUpon>ActionMap.idl</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="ActionMapSerialization.cpp">
+      <DependentUpon>ActionMap.idl</DependentUpon>
     </ClCompile>
     <ClCompile Include="AzureCloudShellGenerator.cpp" />
     <ClCompile Include="CascadiaSettings.cpp">
@@ -89,15 +117,18 @@
     <ClCompile Include="KeyChordSerialization.cpp">
       <DependentUpon>KeyChordSerialization.idl</DependentUpon>
     </ClCompile>
-    <ClCompile Include="KeyMapping.cpp">
-      <DependentUpon>KeyMapping.idl</DependentUpon>
-    </ClCompile>
-    <ClCompile Include="KeyMappingSerialization.cpp">
-      <DependentUpon>KeyMapping.idl</DependentUpon>
-    </ClCompile>
     <ClCompile Include="PowershellCoreProfileGenerator.cpp" />
     <ClCompile Include="Profile.cpp">
       <DependentUpon>Profile.idl</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="AppearanceConfig.cpp">
+      <DependentUpon>AppearanceConfig.idl</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="TerminalSettings.cpp">
+      <DependentUpon>TerminalSettings.idl</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="EnumMappings.cpp">
+      <DependentUpon>EnumMappings.idl</DependentUpon>
     </ClCompile>
     <ClCompile Include="WslDistroGenerator.cpp" />
     <!-- You _NEED_ to include this file and the jsoncpp IncludePath (below) if
@@ -110,14 +141,20 @@
   <!-- ========================= idl Files ======================== -->
   <ItemGroup>
     <Midl Include="ActionArgs.idl" />
+    <Midl Include="ActionMap.idl" />
     <Midl Include="CascadiaSettings.idl" />
     <Midl Include="ColorScheme.idl" />
     <Midl Include="Command.idl" />
+    <Midl Include="DefaultTerminal.idl" />
     <Midl Include="GlobalAppSettings.idl" />
-    <Midl Include="KeyMapping.idl" />
+    <Midl Include="IconPathConverter.idl" />
     <Midl Include="Profile.idl" />
+    <Midl Include="EnumMappings.idl" />
+    <Midl Include="TerminalSettings.idl" />
     <Midl Include="TerminalWarnings.idl" />
     <Midl Include="KeyChordSerialization.idl" />
+    <Midl Include="AppearanceConfig.idl" />
+    <Midl Include="IAppearanceConfig.idl" />
   </ItemGroup>
   <!-- ========================= Misc Files ======================== -->
   <ItemGroup>
@@ -152,8 +189,14 @@
       <Private>false</Private>
       <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
     </Reference>
-    <Reference Include="Microsoft.Terminal.TerminalControl">
-      <HintPath>$(OpenConsoleCommonOutDir)TerminalControl\Microsoft.Terminal.TerminalControl.winmd</HintPath>
+    <Reference Include="Microsoft.Terminal.Control">
+      <HintPath>$(OpenConsoleCommonOutDir)Microsoft.Terminal.Control\Microsoft.Terminal.Control.winmd</HintPath>
+      <IsWinMDFile>true</IsWinMDFile>
+      <Private>false</Private>
+      <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
+    </Reference>
+    <Reference Include="Microsoft.Terminal.Core">
+      <HintPath>$(OpenConsoleCommonOutDir)TerminalCore\Microsoft.Terminal.Core.winmd</HintPath>
       <IsWinMDFile>true</IsWinMDFile>
       <Private>false</Private>
       <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
@@ -177,12 +220,12 @@
   <!-- ========================= Globals ======================== -->
   <Import Project="$(OpenConsoleDir)src\cppwinrt.build.post.props" />
 
-  <Import Project="..\..\..\packages\Microsoft.UI.Xaml.2.5.0-prerelease.200609001\build\native\Microsoft.UI.Xaml.targets" Condition="Exists('..\..\..\packages\Microsoft.UI.Xaml.2.5.0-prerelease.200609001\build\native\Microsoft.UI.Xaml.targets')" />
+  <Import Project="..\..\..\packages\Microsoft.UI.Xaml.2.5.0-prerelease.201202003\build\native\Microsoft.UI.Xaml.targets" Condition="Exists('..\..\..\packages\Microsoft.UI.Xaml.2.5.0-prerelease.201202003\build\native\Microsoft.UI.Xaml.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
-    <Error Condition="!Exists('$(OpenConsoleDir)\packages\Microsoft.UI.Xaml.2.5.0-prerelease.200609001\build\native\Microsoft.UI.Xaml.targets')" Text="$([System.String]::Format('$(ErrorText)', '$(OpenConsoleDir)\packages\Microsoft.UI.Xaml.2.5.0-prerelease.200609001\build\native\Microsoft.UI.Xaml.targets'))" />
+    <Error Condition="!Exists('$(OpenConsoleDir)\packages\Microsoft.UI.Xaml.2.5.0-prerelease.201202003\build\native\Microsoft.UI.Xaml.targets')" Text="$([System.String]::Format('$(ErrorText)', '$(OpenConsoleDir)\packages\Microsoft.UI.Xaml.2.5.0-prerelease.201202003\build\native\Microsoft.UI.Xaml.targets'))" />
   </Target>
   <!-- This target will take our defaults.json and stamp it into a .h file that
   we can include in the code directly. This way, we don't need to worry about
@@ -198,6 +241,6 @@
   <Target Name="_TerminalAppGenerateUserSettingsH" Inputs="userDefaults.json" Outputs="Generated Files\userDefaults.h" BeforeTargets="BeforeClCompile">
     <Exec Command="powershell.exe -noprofile –ExecutionPolicy Unrestricted $(OpenConsoleDir)\tools\GenerateHeaderForJson.ps1 -JsonFile userDefaults.json -OutPath '&quot;Generated Files\userDefaults.h&quot;' -VariableName UserSettingsJson" />
   </Target>
-
+  
   <Import Project="$(SolutionDir)build\rules\CollectWildcardResources.targets" />
 </Project>

@@ -23,7 +23,7 @@ Revision History:
 class ConsoleProcessHandle;
 class ConsoleHandleData;
 
-class DeviceComm;
+class IDeviceComm;
 
 typedef struct _CONSOLE_API_MSG
 {
@@ -32,9 +32,14 @@ typedef struct _CONSOLE_API_MSG
     CD_IO_COMPLETE Complete;
     CONSOLE_API_STATE State;
 
-    DeviceComm* _pDeviceComm;
+    IDeviceComm* _pDeviceComm;
     IApiRoutines* _pApiRoutines;
 
+private:
+    boost::container::small_vector<BYTE, 128> _inputBuffer;
+    boost::container::small_vector<BYTE, 128> _outputBuffer;
+
+public:
     // From here down is the actual packet data sent/received.
     CD_IO_DESCRIPTOR Descriptor;
     union
@@ -58,6 +63,10 @@ typedef struct _CONSOLE_API_MSG
     // End packet data
 
 public:
+    // DO NOT PUT MORE FIELDS DOWN HERE.
+    // The tail end of this structure will have a console driver packet
+    // copied over it and it will overwrite any fields declared here.
+
     ConsoleProcessHandle* GetProcessHandle() const;
     ConsoleHandleData* GetObjectHandle() const;
 
@@ -72,5 +81,16 @@ public:
 
     void SetReplyStatus(const NTSTATUS Status);
     void SetReplyInformation(const ULONG_PTR pInformation);
+
+    // MSFT-33127449, GH#9692
+    // We are not writing a copy constructor for this class
+    // so as to scope a fix as narrowly as possible to the
+    // "invalid user buffer" crash.
+    // TODO GH#10076: remove this.
+    void UpdateUserBufferPointers();
+
+    // DO NOT PUT MORE FIELDS DOWN HERE.
+    // The tail end of this structure will have a console driver packet
+    // copied over it and it will overwrite any fields declared here.
 
 } CONSOLE_API_MSG, *PCONSOLE_API_MSG, * const PCCONSOLE_API_MSG;

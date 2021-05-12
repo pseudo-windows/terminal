@@ -438,6 +438,32 @@ namespace Microsoft::Terminal::Settings::Model::JsonUtils
     };
 #endif
 
+#ifdef WINRT_Microsoft_Terminal_Core_H
+    template<>
+    struct ConversionTrait<winrt::Microsoft::Terminal::Core::Color>
+    {
+        winrt::Microsoft::Terminal::Core::Color FromJson(const Json::Value& json) const
+        {
+            return static_cast<winrt::Microsoft::Terminal::Core::Color>(ConversionTrait<til::color>{}.FromJson(json));
+        }
+
+        bool CanConvert(const Json::Value& json) const
+        {
+            return ConversionTrait<til::color>{}.CanConvert(json);
+        }
+
+        Json::Value ToJson(const winrt::Microsoft::Terminal::Core::Color& val)
+        {
+            return ConversionTrait<til::color>{}.ToJson(val);
+        }
+
+        std::string TypeDescription() const
+        {
+            return ConversionTrait<til::color>{}.TypeDescription();
+        }
+    };
+#endif
+
     template<typename T, typename TDelegatedConverter = ConversionTrait<typename std::decay<T>::type>, typename TOpt = std::optional<typename std::decay<T>::type>>
     struct OptionalConverter
     {
@@ -506,7 +532,7 @@ namespace Microsoft::Terminal::Settings::Model::JsonUtils
             }
 
             DeserializationError e{ json };
-            e.expectedType = TypeDescription();
+            e.expectedType = static_cast<const TBase&>(*this).TypeDescription();
             throw e;
         }
 
@@ -572,7 +598,7 @@ namespace Microsoft::Terminal::Settings::Model::JsonUtils
                     {
                         // attempt to combine AllClear (explicitly) with anything else
                         DeserializationError e{ element };
-                        e.expectedType = BaseEnumMapper::TypeDescription();
+                        e.expectedType = static_cast<const TBase&>(*this).TypeDescription();
                         throw e;
                     }
                     value |= newFlag;
