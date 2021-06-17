@@ -26,6 +26,7 @@ static constexpr std::string_view InitialColsKey{ "initialCols" };
 static constexpr std::string_view InitialPositionKey{ "initialPosition" };
 static constexpr std::string_view CenterOnLaunchKey{ "centerOnLaunch" };
 static constexpr std::string_view ShowTitleInTitlebarKey{ "showTerminalTitleInTitlebar" };
+static constexpr std::string_view LanguageKey{ "language" };
 static constexpr std::string_view ThemeKey{ "theme" };
 static constexpr std::string_view TabWidthModeKey{ "tabWidthMode" };
 static constexpr std::string_view ShowTabsInTitlebarKey{ "showTabsInTitlebar" };
@@ -101,6 +102,7 @@ winrt::com_ptr<GlobalAppSettings> GlobalAppSettings::Copy() const
     globals->_AlwaysShowTabs = _AlwaysShowTabs;
     globals->_ShowTitleInTitlebar = _ShowTitleInTitlebar;
     globals->_ConfirmCloseAllTabs = _ConfirmCloseAllTabs;
+    globals->_Language = _Language;
     globals->_Theme = _Theme;
     globals->_TabWidthMode = _TabWidthMode;
     globals->_ShowTabsInTitlebar = _ShowTabsInTitlebar;
@@ -279,6 +281,8 @@ void GlobalAppSettings::LayerJson(const Json::Value& json)
 
     JsonUtils::GetValueForKey(json, LaunchModeKey, _LaunchMode);
 
+    JsonUtils::GetValueForKey(json, LanguageKey, _Language);
+
     JsonUtils::GetValueForKey(json, ThemeKey, _Theme);
 
     JsonUtils::GetValueForKey(json, TabWidthModeKey, _TabWidthMode);
@@ -393,6 +397,7 @@ Json::Value GlobalAppSettings::ToJson() const
     JsonUtils::SetValueForKey(json, WarnAboutLargePasteKey,         _WarnAboutLargePaste);
     JsonUtils::SetValueForKey(json, WarnAboutMultiLinePasteKey,     _WarnAboutMultiLinePaste);
     JsonUtils::SetValueForKey(json, LaunchModeKey,                  _LaunchMode);
+    JsonUtils::SetValueForKey(json, LanguageKey,                    _Language);
     JsonUtils::SetValueForKey(json, ThemeKey,                       _Theme);
     JsonUtils::SetValueForKey(json, TabWidthModeKey,                _TabWidthMode);
     JsonUtils::SetValueForKey(json, SnapToGridOnResizeKey,          _SnapToGridOnResize);
@@ -411,10 +416,6 @@ Json::Value GlobalAppSettings::ToJson() const
     JsonUtils::SetValueForKey(json, DetectURLsKey,                  _DetectURLs);
     // clang-format on
 
-    // TODO GH#8100: keymap needs to be serialized here
-    //   For deserialization, we iterate over each action in the Json and interpret it as a keybinding, then as a command.
-    //   Converting this back to JSON is a problem because we have no way to know if a Command and Keybinding come from
-    //     the same entry.
-
+    json[JsonKey(ActionsKey)] = _actionMap->ToJson();
     return json;
 }

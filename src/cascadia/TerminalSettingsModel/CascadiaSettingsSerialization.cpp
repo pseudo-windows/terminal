@@ -2,15 +2,12 @@
 // Licensed under the MIT license.
 
 #include "pch.h"
-#include <argb.h>
 #include "CascadiaSettings.h"
-#include "../../types/inc/utils.hpp"
-#include "Utils.h"
-#include "JsonUtils.h"
-#include <appmodel.h>
-#include <shlobj.h>
+
 #include <fmt/chrono.h>
-#include "DefaultProfileUtils.h"
+#include <shlobj.h>
+
+#include <WtExeUtils.h>
 
 // defaults.h is a file containing the default json settings in a std::string_view
 #include "defaults.h"
@@ -795,6 +792,18 @@ bool CascadiaSettings::_AppendDynamicProfilesToUserSettings()
     return changedFile;
 }
 
+// Function Description:
+// - Given a json serialization of a profile, this function will determine
+//   whether it is "well-formed". We introduced a bug (GH#9962, fixed in GH#9964)
+//   that would result in one or more nameless, guid-less profiles being emitted
+//   into the user's settings file. Those profiles would show up in the list as
+//   "Default" later.
+static bool _IsValidProfileObject(const Json::Value& profileJson)
+{
+    return profileJson.isMember(&*NameKey.cbegin(), (&*NameKey.cbegin()) + NameKey.size()) || // has a name (can generate a guid)
+           profileJson.isMember(&*GuidKey.cbegin(), (&*GuidKey.cbegin()) + GuidKey.size()); // or has a guid
+}
+
 // Method Description:
 // - Create a new instance of this class from a serialized JsonObject.
 // Arguments:
@@ -837,7 +846,7 @@ void CascadiaSettings::LayerJson(const Json::Value& json)
 
     for (auto profileJson : _GetProfilesJsonObject(json))
     {
-        if (profileJson.isObject())
+        if (profileJson.isObject() && _IsValidProfileObject(profileJson))
         {
             _LayerOrCreateProfile(profileJson);
         }
@@ -1046,20 +1055,6 @@ winrt::com_ptr<ColorScheme> CascadiaSettings::_FindMatchingColorScheme(const Jso
     return nullptr;
 }
 
-// Function Description:
-// - Returns true if we're running in a packaged context.
-//   If we are, we want to change our settings path slightly.
-// Arguments:
-// - <none>
-// Return Value:
-// - true iff we're running in a packaged context.
-bool CascadiaSettings::_IsPackaged()
-{
-    UINT32 length = 0;
-    LONG rc = GetCurrentPackageFullName(&length, nullptr);
-    return rc != APPMODEL_ERROR_NO_PACKAGE;
-}
-
 // Method Description:
 // - Writes the given content in UTF-8 to a settings file using the Win32 APIS's.
 //   Will overwrite any existing content in the file.
@@ -1204,7 +1199,7 @@ winrt::hstring CascadiaSettings::SettingsPath()
 
     std::filesystem::path parentDirectoryForSettingsFile{ localAppDataFolder.get() };
 
-    if (!_IsPackaged())
+    if (!IsPackaged())
     {
         parentDirectoryForSettingsFile /= UnpackagedSettingsFolderName;
     }
@@ -1301,7 +1296,15 @@ void CascadiaSettings::WriteSettingsToDisk() const
     _WriteSettings(styledString, settingsPath);
 
     // Persists the default terminal choice
-    Model::DefaultTerminal::Current(_currentDefaultTerminal);
+    //
+    // GH#10003 - Only do this if _currentDefaultTerminal was actually
+    // initialized. It's only initialized when Launch.cpp calls
+    // `CascadiaSettings::RefreshDefaultTerminals`. We really don't need it
+    // otherwise.
+    if (_currentDefaultTerminal)
+    {
+        Model::DefaultTerminal::Current(_currentDefaultTerminal);
+    }
 }
 
 // Method Description:
@@ -1344,16 +1347,6 @@ Json::Value CascadiaSettings::ToJson() const
         schemes.append(scheme->ToJson());
     }
     json[JsonKey(SchemesKey)] = schemes;
-
-    // "actions"/"keybindings" will be whatever blob we had in the file
-    if (_userSettings.isMember(JsonKey(LegacyKeybindingsKey)))
-    {
-        json[JsonKey(LegacyKeybindingsKey)] = _userSettings[JsonKey(LegacyKeybindingsKey)];
-    }
-    if (_userSettings.isMember(JsonKey(ActionsKey)))
-    {
-        json[JsonKey(ActionsKey)] = _userSettings[JsonKey(ActionsKey)];
-    }
 
     return json;
 }

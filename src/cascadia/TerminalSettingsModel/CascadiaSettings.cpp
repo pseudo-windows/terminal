@@ -2,23 +2,17 @@
 // Licensed under the MIT license.
 
 #include "pch.h"
-#include <argb.h>
-#include <conattrs.hpp>
-#include <io.h>
-#include <fcntl.h>
 #include "CascadiaSettings.h"
-#include "../../types/inc/utils.hpp"
-#include "../../inc/DefaultSettings.h"
-#include "Utils.h"
-#include "LibraryResources.h"
-
-#include "PowershellCoreProfileGenerator.h"
-#include "WslDistroGenerator.h"
-#include "AzureCloudShellGenerator.h"
-
 #include "CascadiaSettings.g.cpp"
 
+#include <LibraryResources.h>
+
+#include "AzureCloudShellGenerator.h"
+#include "PowershellCoreProfileGenerator.h"
+#include "WslDistroGenerator.h"
+
 using namespace ::Microsoft::Terminal::Settings::Model;
+using namespace winrt::Microsoft::Terminal;
 using namespace winrt::Microsoft::Terminal::Control;
 using namespace winrt::Microsoft::Terminal::Settings::Model::implementation;
 using namespace winrt::Windows::Foundation::Collections;
@@ -1137,7 +1131,8 @@ winrt::hstring CascadiaSettings::ApplicationVersion()
 }
 
 // Method Description:
-// - Forces a refresh of all default terminal state
+// - Forces a refresh of all default terminal state. This hits the registry to
+//   read off the disk, so best to not do it on the UI thread.
 // Arguments:
 // - <none>
 // Return Value:
@@ -1187,18 +1182,23 @@ bool CascadiaSettings::IsDefaultTerminalAvailable() noexcept
 // - <none>
 // Return Value:
 // - an iterable collection of all available terminals that could be the default.
-IObservableVector<winrt::Microsoft::Terminal::Settings::Model::DefaultTerminal> CascadiaSettings::DefaultTerminals() const noexcept
+IObservableVector<Settings::Model::DefaultTerminal> CascadiaSettings::DefaultTerminals() const noexcept
 {
     return _defaultTerminals;
 }
 
 // Method Description:
-// - Returns the currently selected default terminal application
+// - Returns the currently selected default terminal application.
+// - DANGER! This will be null unless you've called
+//   CascadiaSettings::RefreshDefaultTerminals. At the time of this comment (May
+
+//   2021), only the Launch page in the settings UI calls that method, so this
+//   value is unset unless you've navigated to that page.
 // Arguments:
 // - <none>
 // Return Value:
 // - the selected default terminal application
-winrt::Microsoft::Terminal::Settings::Model::DefaultTerminal CascadiaSettings::CurrentDefaultTerminal() const noexcept
+Settings::Model::DefaultTerminal CascadiaSettings::CurrentDefaultTerminal() const noexcept
 {
     return _currentDefaultTerminal;
 }
@@ -1209,7 +1209,7 @@ winrt::Microsoft::Terminal::Settings::Model::DefaultTerminal CascadiaSettings::C
 // - terminal - Terminal from `DefaultTerminals` list to set as default
 // Return Value:
 // - <none>
-void CascadiaSettings::CurrentDefaultTerminal(winrt::Microsoft::Terminal::Settings::Model::DefaultTerminal terminal)
+void CascadiaSettings::CurrentDefaultTerminal(Settings::Model::DefaultTerminal terminal)
 {
     _currentDefaultTerminal = terminal;
 }

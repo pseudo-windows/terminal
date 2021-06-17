@@ -163,6 +163,7 @@ BPBF
 bpp
 BPPF
 branchconfig
+brandings
 BRK
 Browsable
 bsearch
@@ -183,7 +184,6 @@ bytebuffer
 cac
 cacafire
 callee
-cang
 capslock
 CARETBLINKINGENABLED
 CARRIAGERETURN
@@ -497,6 +497,7 @@ dealloc
 Debian
 debolden
 debounce
+debugtype
 DECALN
 DECANM
 DECAUPSS
@@ -1367,7 +1368,6 @@ MEASUREITEM
 megamix
 memallocator
 memcmp
-memcopy
 memcpy
 memmove
 memset
@@ -1849,7 +1849,6 @@ psp
 PSPCB
 psr
 PSTR
-psuedoconsole
 psz
 ptch
 ptr
@@ -1943,6 +1942,7 @@ REGSTR
 reingest
 Relayout
 RELBINPATH
+remoting
 Remoting
 renamer
 renderengine
@@ -1968,7 +1968,6 @@ rftp
 rgb
 rgba
 rgbi
-rgch
 rgci
 rgfae
 rgfte
@@ -2044,8 +2043,6 @@ scriptload
 Scrollable
 scrollback
 scrollbar
-Scrolldown
-Scrolldownpage
 Scroller
 SCROLLFORWARD
 SCROLLINFO
@@ -2053,8 +2050,6 @@ scrolllock
 scrolloffset
 SCROLLSCALE
 SCROLLSCREENBUFFER
-Scrollup
-Scrolluppage
 scursor
 sddl
 sdeleted
@@ -2069,6 +2064,7 @@ selectany
 SELECTEDFONT
 SELECTSTRING
 Selfhosters
+serializers
 SERVERDLL
 SETACTIVE
 SETBUDDYINT
